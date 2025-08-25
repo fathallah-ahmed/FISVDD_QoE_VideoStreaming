@@ -225,4 +225,4 @@ flowchart LR
 
 ---
 
-*Prepared by: Student — FISVDD QoE Mini‑Project.*
+*Prepared by: Ahmed Fathallah — FISVDD QoE Mini‑Project.*
