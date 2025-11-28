@@ -1,30 +1,17 @@
 # app.py
-import os, numpy as np, joblib
-from fastapi import FastAPI
+import os
+import numpy as np
+import joblib
+from fastapi import FastAPI, Depends
 from pydantic import BaseModel
+from typing import List, Dict, Any, Optional
+from contextlib import asynccontextmanager
+
 from fisvdd import fisvdd
 from common_features import transform_row
+import config
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-ARTIFACTS = os.path.join(BASE_DIR, "fisvdd_artifacts.joblib")
-
-A = joblib.load(ARTIFACTS)
-FEATS     = A["features"]
-scaler    = A["scaler"]
-sigma     = A["sigma"]
-threshold = A["threshold"]
-model     = A["model"]
-
-# incremental state (rolling normal buffer and periodic refit)
-NORMAL_BUFFER_MAX = 4000
-REFIT_EVERY       = 500
-EWMA_ALPHA        = 0.10
-
-ACCUM_NORMALS = []
-seen_since_refit = 0
-
-app = FastAPI(title="FISVDD QoE Online")
-
+# --- Pydantic Models ---
 class Window(BaseModel):
     vmaf_mean: float
     vmaf_std: float
@@ -33,49 +20,141 @@ class Window(BaseModel):
     stall_ratio: float
     tsl_end: float
 
-def score_point(m, xz):
-    s, _ = m.score_fcn(xz.reshape(1, -1))
-    return float(s)
+class ScoreResponse(BaseModel):
+    anomaly_score: float
+    is_anomaly: bool
+    threshold: float
 
-@app.post("/score")
-def score(w: Window):
-    global model, threshold, ACCUM_NORMALS, seen_since_refit
+# --- Model Manager ---
+class ModelManager:
+    def __init__(self, artifacts_path: str):
+        self.artifacts_path = artifacts_path
+        self.model: Optional[fisvdd] = None
+        self.scaler: Any = None
+        self.threshold: float = 0.0
+        self.sigma: float = 0.0
+        self.accum_normals: List[np.ndarray] = []
+        self.seen_since_refit: int = 0
+        
+        self.load_model()
 
-    raw = [w.vmaf_mean, w.vmaf_std, w.vmaf_mad, w.bitrate_mean, w.stall_ratio, w.tsl_end]
-    x = transform_row(raw).reshape(1, -1)  # clip + log1p, same as train/test
-    xz = scaler.transform(x)
-    s = score_point(model, xz[0])
-    MARGIN = 0.02
-    is_anom = bool(s > threshold+MARGIN)
+    def load_model(self):
+        if not os.path.exists(self.artifacts_path):
+            raise FileNotFoundError(f"Artifacts not found at {self.artifacts_path}")
+            
+        A = joblib.load(self.artifacts_path)
+        self.scaler = A["scaler"]
+        self.sigma = A["sigma"]
+        self.threshold = A["threshold"]
+        self.model = A["model"]
+        
+        # Reset incremental buffers on load/reload
+        self.accum_normals = []
+        self.seen_since_refit = 0
+        print(f"Model loaded from {self.artifacts_path}. Threshold={self.threshold:.4f}")
 
-    # update only on normal
-    if not is_anom:
-        # expand with similarity vector from score_fcn
-        s_now, sim_vec = model.score_fcn(xz.reshape(1, -1))
-        model.expand(xz.reshape(1, -1), sim_vec)
-        if model.alpha.min() < 0:
-            backup = model.shrink()
+    def score_point(self, xz: np.ndarray) -> float:
+        s, _ = self.model.score_fcn(xz.reshape(1, -1))
+        return float(s)
+
+    def update(self, xz: np.ndarray, score: float):
+        """
+        Update model with a normal point (incremental learning).
+        """
+        # Expand
+        s_now, sim_vec = self.model.score_fcn(xz.reshape(1, -1))
+        self.model.expand(xz.reshape(1, -1), sim_vec)
+        
+        # Shrink if needed
+        if self.model.alpha.min() < 0:
+            backup = self.model.shrink()
             for b in backup:
-                sb, sim_b = model.score_fcn(b.reshape(1, -1))
+                sb, sim_b = self.model.score_fcn(b.reshape(1, -1))
                 if sb > 0:
-                    model.expand(b.reshape(1, -1), sim_b)
-        model.model_update()
+                    self.model.expand(b.reshape(1, -1), sim_b)
+        
+        self.model.model_update()
 
-        # buffer + light threshold adaptation
-        ACCUM_NORMALS.append(xz[0])
-        if len(ACCUM_NORMALS) > NORMAL_BUFFER_MAX:
-            ACCUM_NORMALS = ACCUM_NORMALS[-NORMAL_BUFFER_MAX:]
-        threshold = float((1 - EWMA_ALPHA) * threshold + EWMA_ALPHA * s)
+        # Buffer & Threshold Adaptation
+        self.accum_normals.append(xz)
+        if len(self.accum_normals) > config.NORMAL_BUFFER_MAX:
+            self.accum_normals = self.accum_normals[-config.NORMAL_BUFFER_MAX:]
+            
+        self.threshold = float((1 - config.EWMA_ALPHA) * self.threshold + config.EWMA_ALPHA * score)
 
-        # periodic refit from buffer (keeps model compact)
-        seen_since_refit += 1
-        if seen_since_refit >= REFIT_EVERY and len(ACCUM_NORMALS) > 50:
-            Xref = np.vstack(ACCUM_NORMALS)
-            model = fisvdd(Xref, sigma)
-            model.find_sv()
-            # refresh threshold from recent normals (95th percentile)
-            sc = [score_point(model, xi) for xi in Xref[:min(2000, len(Xref))]]
-            threshold = float(np.quantile(sc, 0.95))
-            seen_since_refit = 0
+        # Periodic Refit
+        self.seen_since_refit += 1
+        if self.seen_since_refit >= config.REFIT_EVERY and len(self.accum_normals) > config.MIN_REFIT_SIZE:
+            self._refit()
 
-    return {"anomaly_score": s, "is_anomaly": is_anom, "threshold": threshold}
+    def _refit(self):
+        """
+        Refit the model using the accumulated normal buffer.
+        """
+        Xref = np.vstack(self.accum_normals)
+        # Create fresh model
+        self.model = fisvdd(Xref, self.sigma)
+        self.model.find_sv()
+        
+        # Refresh threshold
+        # Score a subset of the buffer to estimate quantile
+        subset_size = min(config.REFIT_SAMPLE_SIZE, len(Xref))
+        sc = [self.score_point(xi) for xi in Xref[:subset_size]]
+        self.threshold = float(np.quantile(sc, config.THRESHOLD_QUANTILE))
+        
+        self.seen_since_refit = 0
+        print(f"Model refitted. New threshold={self.threshold:.4f}")
+
+# --- Dependency Injection ---
+model_manager: Optional[ModelManager] = None
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Load model on startup
+    global model_manager
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    artifacts_path = os.path.join(base_dir, config.ARTIFACTS_FILENAME)
+    model_manager = ModelManager(artifacts_path)
+    yield
+    # Clean up if needed
+
+app = FastAPI(title="FISVDD QoE Online", lifespan=lifespan)
+
+def get_model_manager() -> ModelManager:
+    if model_manager is None:
+        raise RuntimeError("ModelManager is not initialized")
+    return model_manager
+
+# --- Endpoints ---
+
+@app.post("/score", response_model=ScoreResponse)
+def score(w: Window, mgr: ModelManager = Depends(get_model_manager)):
+    raw = [w.vmaf_mean, w.vmaf_std, w.vmaf_mad, w.bitrate_mean, w.stall_ratio, w.tsl_end]
+    x = transform_row(raw).reshape(1, -1)
+    xz = mgr.scaler.transform(x)[0]
+    
+    s = mgr.score_point(xz)
+    is_anom = bool(s > mgr.threshold + config.MARGIN)
+
+    if not is_anom:
+        mgr.update(xz, s)
+
+    return {
+        "anomaly_score": s, 
+        "is_anomaly": is_anom, 
+        "threshold": mgr.threshold
+    }
+
+@app.get("/status")
+def status(mgr: ModelManager = Depends(get_model_manager)):
+    return {
+        "threshold": mgr.threshold,
+        "buffer_size": len(mgr.accum_normals),
+        "support_vectors": len(mgr.model.sv),
+        "seen_since_refit": mgr.seen_since_refit
+    }
+
+@app.get("/health")
+def health():
+    return {"status": "ok"}
+
