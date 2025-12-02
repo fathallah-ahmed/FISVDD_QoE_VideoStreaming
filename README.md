@@ -2,7 +2,7 @@
 
 [![Python](https://img.shields.io/badge/Python-3.13%2B-blue?logo=python&logoColor=white)](https://www.python.org/)
 [![FastAPI](https://img.shields.io/badge/API-FastAPI-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
-[![Datasets](https://img.shields.io/badge/Datasets-2-success)](#datasets)
+[![Datasets](https://img.shields.io/badge/Datasets-3-success)](#datasets)
 [![License](https://img.shields.io/badge/License-MIT-blue)](LICENSE)
 [![Status](https://img.shields.io/badge/Build-Passing-success)](#)
 
@@ -11,8 +11,9 @@
 This repository implements an end-to-end **Quality of Experience (QoE)** anomaly detection system for **video streaming** using the **Fast Incremental Support Vector Data Description (FISVDD)** algorithm with **batch-based incremental learning**.  
 
 Supports **multiple datasets** with adaptive feature engineering:
-- **LIVE-Netflix-II**: AUC 0.74 | 6 features | VMAF-based quality metrics
-- **LFOVIA QoE**: AUC 0.80 | 4 features | Rebuffering + visual quality
+- **LIVE-Netflix-II**: AUC 0.74 | 4,257 train samples | 6 features
+- **LIVE-Netflix (Original)**: AUC 0.64 | 3,504 train samples | 6 features  
+- **LFOVIA QoE**: AUC 0.79 | 960 samples | 4 features
 
 **Key Features**:
 - ⚡ **Incremental Batch Learning** (default): Train progressively with configurable batch sizes
@@ -30,11 +31,15 @@ Detects playback degradation (rebuffering, bitrate drops, quality instability) a
 FISVDD_QoE_VideoStreaming/
 │
 ├── resources/                          # Dataset files (organized by dataset)
-│   ├── LIVE_NFLX_II/                  
-│   │   ├── LIVE_NFLX_II_FISVDD_train.csv
-│   │   └── LIVE_NFLX_II_windows_minimal.csv
+│   ├── LIVE_NFLX_II/                   # LIVE-Netflix-II (420 .mat files)
+│   │   ├── LIVE_NFLX_II_train.csv     # 4,257 good windows from 57 videos
+│   │   └── LIVE_NFLX_II_test.csv      # 462 mixed windows from 3 videos
+│   ├── LIVE_NFLX/                      # LIVE-Netflix Original (112 .mat files)
+│   │   ├── matFiles/                   # Raw .mat files
+│   │   ├── LIVE_NFLX_train.csv        # 3,504 good windows from 12 videos
+│   │   └── LIVE_NFLX_test.csv         # 1,088 mixed windows from 2 videos
 │   └── LFOVIA_QoE/
-│       ├── LFOVIA_QoE_train.csv
+│       ├── LFOVIA_QoE_train.csv       # 960 samples (K-fold)
 │       └── LFOVIA_QoE_test.csv
 │
 ├── configs/                            # Dataset-specific configurations
@@ -45,10 +50,12 @@ FISVDD_QoE_VideoStreaming/
 │
 ├── artifacts/                          # Trained models (by dataset)
 │   ├── LIVE_NFLX_II_fisvdd.joblib
+│   ├── LIVE_NFLX_fisvdd.joblib
 │   └── LFOVIA_QoE_fisvdd.joblib
 │
 ├── results/                            # Evaluation results
 │   ├── LIVE_NFLX_II/                  # ROC curves, metrics, plots
+│   ├── LIVE_NFLX/
 │   ├── LFOVIA_QoE/
 │   └── comparative_analysis/          # Cross-dataset comparisons
 │
@@ -97,12 +104,13 @@ pip install -r requirements.txt
 
 This project supports multiple video QoE datasets with dataset-specific feature engineering.
 
-### 📘 LIVE-Netflix-II (2018)
+### 📘 LIVE-Netflix-II (LIVE_NFLX_II)
 
 **Source**: [LIVE-NFLX Video QoE Database](http://live.ece.utexas.edu/research/LIVE_NFLXStudy/nflx_index.html)  
-**Content**: 420 distorted video sequences with subjective QoE scores  
+**Content**: 420 .mat files → 5-second windowing → 4,719 total windows  
+**Split**: 4,257 train (57 videos) / 462 test (3 videos)  
 **Features**: 6 VMAF-based quality metrics  
-**Performance**: AUC 0.74 | AP 0.71 | F1 0.42
+**Performance**: AUC 0.74 | AP 0.71 | F1 0.49 | Precision 0.86
 
 | Feature | Description |
 |---------|-------------|
@@ -111,12 +119,28 @@ This project supports multiple video QoE datasets with dataset-specific feature 
 | `stall_ratio` | Ratio of stalled frames |
 | `tsl_end` | Time since last stall |
 
+### 📙 LIVE-Netflix Original (LIVE_NFLX)
+
+**Source**: Original LIVE-Netflix Dataset  
+**Content**: 112 .mat files → 5-second windowing → 4,592 total windows  
+**Split**: 3,504 train (12 videos) / 1,088 test (2 videos)  
+**Features**: 6 quality + stall metrics  
+**Performance**: AUC 0.64 | AP 0.73 | F1 0.49 | Precision 0.79
+
+| Feature | Description |
+|---------|-------------|
+| `vmaf_mean`, `vmaf_std`, `vmaf_mad` | VMAF quality statistics |
+| `ssim` | Structural similarity index |
+| `stall_count` | Number of rebuffering events |
+| `tsl_end` | Time since last stall |
+
 ### 📗 LFOVIA QoE Dataset
 
 **Source**: [IIT Hyderabad LFOVIA](https://iith.ac.in/~lfovia/)  
-**Content**: 54 videos (18 pristine + 36 distorted) with continuous QoE scores  
+**Content**: 960 samples with continuous QoE scores  
+**Split**: K-fold cross-validation (content-based)  
 **Features**: 4 streaming + visual quality metrics  
-**Performance**: AUC 0.80 | AP 0.42 | F1 0.49
+**Performance**: AUC 0.79 | AP 0.41 | F1 0.51 | Precision 0.48
 
 | Feature | Description |
 |---------|-------------|
@@ -132,8 +156,11 @@ This project supports multiple video QoE datasets with dataset-specific feature 
 Train on any supported dataset:
 
 ```bash
-# LIVE-Netflix-II
+# LIVE-Netflix-II (Best Performance)
 python train_fisvdd.py --dataset LIVE_NFLX_II
+
+# LIVE-Netflix Original
+python train_fisvdd.py --dataset LIVE_NFLX
 
 # LFOVIA QoE
 python train_fisvdd.py --dataset LFOVIA_QoE
@@ -155,6 +182,7 @@ Evaluate on any dataset:
 
 ```bash
 python test_fisvdd.py --dataset LIVE_NFLX_II
+python test_fisvdd.py --dataset LIVE_NFLX
 python test_fisvdd.py --dataset LFOVIA_QoE
 ```
 
@@ -215,9 +243,10 @@ Run K-fold cross-validation:
 
 ```bash
 python benchmark_fisvdd.py --dataset LIVE_NFLX_II
+python benchmark_fisvdd.py --dataset LIVE_NFLX
 python benchmark_fisvdd.py --dataset LFOVIA_QoE
 
-# Compare datasets
+# Compare all 3 datasets
 python compare_datasets.py
 ```
 

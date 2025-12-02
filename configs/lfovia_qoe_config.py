@@ -37,9 +37,13 @@ class LfoviaQoeConfig(BaseDatasetConfig):
     TRAIN_FILE = "LFOVIA_QoE_train.csv"
     TEST_FILE = "LFOVIA_QoE_test.csv"
     
-    # FISVDD parameters
-    THRESHOLD_QUANTILE = 0.95
-    SIGMA_METHOD = "median_heuristic"
+    # FISVDD parameters (optimized via grid search)
+    THRESHOLD_QUANTILE = 0.90
+    SIGMA_METHOD = "fixed"
+    SIGMA_VALUE = 1.655873
+    
+    # Batch learning parameters (optimized)
+    INITIAL_BATCH_SIZE = 100
     
     # Incremental learning parameters
     NORMAL_BUFFER_MAX = 500
@@ -52,7 +56,7 @@ class LfoviaQoeConfig(BaseDatasetConfig):
     @staticmethod
     def is_anomaly(y_value: float) -> int:
         """
-        LFOVIA scores are 0-100.
+        LFOVIA score_continuous values are 0-100.
         We define anomaly (bad quality) as score < 50.
         """
         return 1 if y_value < 50 else 0

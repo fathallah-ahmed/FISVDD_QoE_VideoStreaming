@@ -1,4 +1,4 @@
-# 🎉 Project Refactoring Complete - Final Summary
+# 🎉 FISVDD QoE Project - Complete with 3 Datasets
 
 ## 📊 Performance Improvements
 
@@ -66,10 +66,14 @@ FISVDD_QoE_VideoStreaming/
 │
 ├── 📂 resources/               ← Datasets (organized)
 │   ├── LIVE_NFLX_II/
-│   │   ├── LIVE_NFLX_II_FISVDD_train.csv
-│   │   └── LIVE_NFLX_II_windows_minimal.csv
+│   │   ├── LIVE_NFLX_II_train.csv (4,257 samples)
+│   │   └── LIVE_NFLX_II_test.csv (462 samples)
+│   ├── LIVE_NFLX/               ← NEW: Third dataset
+│   │   ├── matFiles/            ← Raw .mat files
+│   │   ├── LIVE_NFLX_train.csv (3,504 samples)
+│   │   └── LIVE_NFLX_test.csv (1,088 samples)
 │   └── LFOVIA_QoE/
-│       ├── LFOVIA_QoE_train.csv
+│       ├── LFOVIA_QoE_train.csv (960 samples)
 │       └── LFOVIA_QoE_test.csv
 │
 ├── 📂 configs/                 ← Dataset configurations
@@ -80,8 +84,9 @@ FISVDD_QoE_VideoStreaming/
 │   └── lfovia_qoe_config.py   ← IMPROVED: 4 features now
 │
 ├── 📂 artifacts/               ← Trained models
-│   ├── README.md              ← NEW: Artifacts guide
+│   ├── README.md
 │   ├── LIVE_NFLX_II_fisvdd.joblib
+│   ├── LIVE_NFLX_fisvdd.joblib  ← NEW: Third model
 │   └── LFOVIA_QoE_fisvdd.joblib
 │
 ├── 📂 results/                 ← Evaluation results
@@ -91,6 +96,8 @@ FISVDD_QoE_VideoStreaming/
 │   │   ├── roc_curve.png
 │   │   ├── pr_curve.png
 │   │   └── (other plots)
+│   ├── LIVE_NFLX/               ← NEW: Third dataset results
+│   │   └── metrics.json
 │   ├── LFOVIA_QoE/
 │   │   ├── metrics.json
 │   │   ├── roc_curve.png
@@ -141,8 +148,8 @@ All tests passed successfully:
 
 1. ✅ LFOVIA_QoE retrained with new features (AUC 0.80)
 2. ✅ LIVE_NFLX_II regression test (AUC 0.74, no degradation)
-3. ✅ Benchmark K-fold validation completed
-4. ✅ Comparative analysis generated
+3. ✅ Benchmark K-fold validation completed for all datasets
+4. ✅ Comparative analysis generated with 3 datasets
 5. ✅ Project structure cleaned and organized
 6. ✅ Documentation comprehensive and clear
 
@@ -226,8 +233,8 @@ The project is now ready to be pushed to GitHub with:
 
 > **FISVDD-QoE**: Fast Incremental SVDD for Video Quality of Experience Anomaly Detection
 > 
-> 🎯 Multi-dataset support (LIVE-Netflix-II, LFOVIA QoE)  
-> 📊 State-of-the-art performance (AUC 0.74-0.80)  
+> 🎯 Multi-dataset support (3 datasets: LIVE-Netflix-II, LIVE-Netflix, LFOVIA QoE)  
+> 📊 State-of-the-art performance (AUC 0.64-0.79)
 > ⚡ Real-time incremental learning  
 > 🔧 Easy-to-use configuration system  
 > 📖 Comprehensive documentation

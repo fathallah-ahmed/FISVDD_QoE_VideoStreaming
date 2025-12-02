@@ -4,11 +4,13 @@ Dataset configuration management.
 """
 from .base_config import BaseDatasetConfig
 from .live_nflx_ii_config import LiveNflxIIConfig
+from .live_nflx_config import LiveNflxConfig
 from .lfovia_qoe_config import LfoviaQoeConfig
 
 # Registry of available datasets
 DATASET_CONFIGS = {
     "LIVE_NFLX_II": LiveNflxIIConfig,
+    "LIVE_NFLX": LiveNflxConfig,
     "LFOVIA_QoE": LfoviaQoeConfig,
 }
 
@@ -35,7 +37,8 @@ def get_config(dataset_name: str) -> BaseDatasetConfig:
 
 __all__ = [
     "BaseDatasetConfig",
-    "LiveNflxIIConfig", 
+    "LiveNflxIIConfig",
+    "LiveNflxConfig", 
     "LfoviaQoeConfig",
     "DATASET_CONFIGS",
     "get_config",

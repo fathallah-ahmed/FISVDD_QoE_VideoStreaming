@@ -27,13 +27,19 @@ class LiveNflxIIConfig(BaseDatasetConfig):
     CLIP_FEATURES = ["bitrate_mean", "stall_ratio", "tsl_end"]
     LOG_TRANSFORM_FEATURES = ["bitrate_mean", "stall_ratio", "tsl_end"]
     
-    # Data files
-    TRAIN_FILE = "LIVE_NFLX_II_FISVDD_train.csv"
-    TEST_FILE = "LIVE_NFLX_II_windows_minimal.csv"
+    # Data files - Fresh split from .mat files
+    # Train: Good windows from 57 training videos
+    # Test: All windows from 3 held-out videos
+    TRAIN_FILE = "LIVE_NFLX_II_train.csv"
+    TEST_FILE = "LIVE_NFLX_II_test.csv"
     
-    # FISVDD parameters (tuned for this dataset)
-    THRESHOLD_QUANTILE = 0.95
-    SIGMA_METHOD = "median_heuristic"
+    # FISVDD parameters (optimized via grid search)
+    THRESHOLD_QUANTILE = 0.90
+    SIGMA_METHOD = "fixed"
+    SIGMA_VALUE = 2.081761
+    
+    # Batch learning parameters (optimized)
+    INITIAL_BATCH_SIZE = 100
     
     # Incremental learning parameters
     NORMAL_BUFFER_MAX = 500

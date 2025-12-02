@@ -126,7 +126,7 @@ def plot_comparison(all_results: dict, output_dir: str):
         
         # Rotate x-axis labels if needed
         if len(datasets) > 2:
-            ax.set_xticklabels(datasets, rotation=45, ha='right')
+            plt.setp(ax.xaxis.get_majorticklabels(), rotation=45, ha='right')
     
     # Hide the last subplot if we have odd number of metrics
     if len(metrics) < 6:
@@ -197,8 +197,8 @@ def main():
     results_dir = os.path.join(base_dir, "results")
     output_dir = os.path.join(results_dir, "comparative_analysis")
     
-    # Datasets to compare
-    datasets = ["LIVE_NFLX_II", "LFOVIA_QoE"]
+    # Datasets to compare (all three)
+    datasets = ["LIVE_NFLX_II", "LIVE_NFLX", "LFOVIA_QoE"]
     
     print("\n" + "="*60)
     print("FISVDD Multi-Dataset Comparison")

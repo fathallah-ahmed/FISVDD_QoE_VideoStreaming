@@ -32,7 +32,7 @@ pip install -r requirements.txt
 
 ## 📊 Working with Datasets
 
-This project supports **2 datasets**. Choose yours and follow the workflow:
+This project supports **3 datasets**. Choose yours and follow the workflow:
 
 ### Option 1: LIVE-Netflix-II Dataset
 
@@ -59,7 +59,27 @@ python benchmark_fisvdd.py --dataset LIVE_NFLX_II
 
 ---
 
-### Option 2: LFOVIA QoE Dataset
+### Option 2: LIVE-Netflix Original Dataset
+
+```bash
+# Step 1: Train the model
+python train_fisvdd.py --dataset LIVE_NFLX
+
+# Step 2: Test and evaluate  
+python test_fisvdd.py --dataset LIVE_NFLX
+
+# Step 3: Run benchmark
+python benchmark_fisvdd.py --dataset LIVE_NFLX
+```
+
+**Expected Results:**
+- AUC: ~0.64
+- AP: ~0.73
+- F1: ~0.49
+
+---
+
+### Option 3: LFOVIA QoE Dataset
 
 ```bash
 # Step 1: Train the model (incremental batch learning by default)
@@ -73,17 +93,17 @@ python benchmark_fisvdd.py --dataset LFOVIA_QoE
 ```
 
 **Expected Results:**
-- AUC: ~0.80
-- AP: ~0.42
-- F1: ~0.49
+- AUC: ~0.79
+- AP: ~0.41
+- F1: ~0.51
 
 **💡 Tip:** Update models with new data using `update_model_incremental.py`
 
 ---
 
-## 🔄 Compare Both Datasets
+## 🔄 Compare All 3 Datasets
 
-After training both models:
+After training all three models:
 
 ```bash
 python compare_datasets.py

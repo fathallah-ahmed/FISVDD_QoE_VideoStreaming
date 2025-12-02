@@ -190,7 +190,7 @@ def main():
         "--dataset",
         type=str,
         default="LIVE_NFLX_II",
-        choices=["LIVE_NFLX_II", "LFOVIA_QoE"],
+        choices=["LIVE_NFLX_II", "LIVE_NFLX", "LFOVIA_QoE"],
         help="Dataset to evaluate on (default: LIVE_NFLX_II)"
     )
     parser.add_argument(
