@@ -278,6 +278,6 @@ When reporting bugs, include:
 
 For questions or discussions:
 - Open an issue on GitHub
-- Or contact: [Your contact method]
+- Or contact: ahmed.fathallllah@gmail.coom
 
 Thank you for contributing to FISVDD-QoE! 🎉
