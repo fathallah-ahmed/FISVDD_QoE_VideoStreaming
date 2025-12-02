@@ -19,19 +19,28 @@ from common_features import transform_df_generic
 from configs import get_config
 
 
-def train_model(dataset_name: str):
+def train_model(dataset_name: str, batch_size: int = None, use_batches: bool = False):
     """
     Train FISVDD model for the specified dataset.
     
     Args:
         dataset_name: Name of the dataset to train on
+        batch_size: Batch size for incremental learning (None = use config default)
+        use_batches: If True, use batch-based incremental learning
     """
     # Get dataset configuration
     config = get_config(dataset_name)
     
+    # Use config default if not specified
+    if batch_size is None:
+        batch_size = config.INITIAL_BATCH_SIZE
+    
     print(f"\n{'='*60}")
     print(f"Training FISVDD on {config.DATASET_NAME}")
     print(f"Description: {config.DATASET_DESCRIPTION}")
+    print(f"Mode: {'Batch Incremental Learning' if use_batches else 'Standard Training'}")
+    if use_batches:
+        print(f"Batch Size: {batch_size}")
     print(f"{'='*60}\n")
     
     # Load training data
@@ -80,8 +89,44 @@ def train_model(dataset_name: str):
     
     # Train FISVDD
     print(f"[5/6] Training FISVDD model...")
-    model = fisvdd(X, sigma)
-    model.find_sv()
+    
+    if use_batches:
+        # Batch-based incremental learning
+        num_batches = int(np.ceil(len(X) / batch_size))
+        print(f"      Training with {num_batches} batches of size {batch_size}")
+        
+        # Initialize with first batch
+        first_batch = X[:batch_size]
+        print(f"      [Batch 1/{num_batches}] Initializing with {len(first_batch)} samples...")
+        model = fisvdd(first_batch, sigma, initial_batch_only=True)
+        model.find_sv(first_batch)
+        print(f"         → SVs: {len(model.sv)}")
+        
+        # Process remaining batches
+        for i in range(1, num_batches):
+            start_idx = i * batch_size
+            end_idx = min((i + 1) * batch_size, len(X))
+            batch = X[start_idx:end_idx]
+            
+            print(f"      [Batch {i+1}/{num_batches}] Processing {len(batch)} samples...")
+            stats = model.update_incremental(batch, verbose=False)
+            print(f"         → SVs: {stats['final_sv_count']} "
+                  f"(+{stats['sv_added']} added, -{stats['sv_removed']} removed)")
+            
+            # Checkpoint if enabled
+            if config.ENABLE_BATCH_CHECKPOINTS and (i + 1) % config.CHECKPOINT_EVERY_N_BATCHES == 0:
+                checkpoint_path = config.get_artifact_path(
+                    f"{config.DATASET_NAME}_checkpoint_batch_{i+1}.joblib"
+                )
+                print(f"         → Saving checkpoint: {checkpoint_path}")
+                joblib.dump(model.get_state(), checkpoint_path)
+        
+        print(f"      Total samples processed: {model.num_processed}")
+    else:
+        # Standard training (all data at once)
+        model = fisvdd(X, sigma)
+        model.find_sv()
+    
     print(f"      Support vectors: {len(model.sv)}")
     
     # Compute threshold
@@ -114,7 +159,9 @@ def train_model(dataset_name: str):
             "clip_features": config.CLIP_FEATURES,
             "log_features": config.LOG_TRANSFORM_FEATURES,
             "threshold_quantile": config.THRESHOLD_QUANTILE,
-        }
+        },
+        "training_mode": "batch" if use_batches else "standard",
+        "batch_size": batch_size if use_batches else None,
     }, artifact_path)
     
     print(f"\n{'='*60}")
@@ -126,12 +173,14 @@ def train_model(dataset_name: str):
     print(f"Support Vectors: {len(model.sv)}")
     print(f"Sigma (σ): {sigma:.6f}")
     print(f"Threshold (τ): {threshold:.6f}")
+    if use_batches:
+        print(f"Training Mode: Batch Incremental (batch_size={batch_size})")
     print(f"{'='*60}\n")
 
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Train FISVDD model on a specified dataset"
+        description="Train FISVDD model on a specified dataset (uses incremental batch learning by default)"
     )
     parser.add_argument(
         "--dataset",
@@ -140,9 +189,22 @@ def main():
         choices=["LIVE_NFLX_II", "LFOVIA_QoE"],
         help="Dataset to train on"
     )
+    parser.add_argument(
+        "--batch-size",
+        type=int,
+        default=None,
+        help="Batch size for incremental learning (default: use config value)"
+    )
+    parser.add_argument(
+        "--standard-mode",
+        action="store_true",
+        help="Use standard training (all data at once) instead of incremental batch learning"
+    )
     
     args = parser.parse_args()
-    train_model(args.dataset)
+    # Default to batch mode (incremental learning) unless --standard-mode is specified
+    use_batches = not args.standard_mode
+    train_model(args.dataset, batch_size=args.batch_size, use_batches=use_batches)
 
 
 if __name__ == "__main__":

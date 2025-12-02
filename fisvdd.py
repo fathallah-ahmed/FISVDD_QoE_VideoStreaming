@@ -8,27 +8,36 @@ class fisvdd:
     """
     Fast Incremental Support Vector Data Description (FISVDD).
     """
-    def __init__(self, data: np.ndarray, sigma: float, eps_cp: float = 1e-8, eps_ol: float = 1e-8):
+    def __init__(self, data: np.ndarray, sigma: float, eps_cp: float = 1e-8, eps_ol: float = 1e-8, 
+                 initial_batch_only: bool = False):
         """
         Initialize the FISVDD model.
 
         Args:
-            data (np.ndarray): Initial dataset to initialize the model.
+            data (np.ndarray): Initial dataset or initial batch to initialize the model.
             sigma (float): Gaussian kernel bandwidth.
             eps_cp (float): Epsilon for close points (numerical stability).
             eps_ol (float): Epsilon for outliers (numerical stability).
+            initial_batch_only (bool): If True, only use 'data' for initialization without 
+                                      storing full dataset (for incremental learning).
         """
-        self.data = data
         self.sigma = sigma
         self.eps_cp = eps_cp
         self.eps_ol = eps_ol
+        
+        # For incremental learning, don't store the full dataset
+        if initial_batch_only:
+            self.data = None
+        else:
+            self.data = data
 
         # Initialize with the first data point
         self.inv_A = np.array([[1.0]])
         self.alpha = np.array([1.0])
-        self.sv = np.array([self.data[0]])
+        self.sv = np.array([data[0]])
         self.obj_val: List[float] = []
         self.score = 1.0
+        self.num_processed = 1  # Track number of points processed
 
     def _print_res(self):
         print("\nalpha -------")
@@ -36,12 +45,22 @@ class fisvdd:
         print("\nsupport vector -------")
         print(self.sv)
 
-    def find_sv(self):
+    def find_sv(self, data: Optional[np.ndarray] = None):
         """
-        Train the FISVDD model on the initial data provided in __init__.
+        Train the FISVDD model on the initial data provided in __init__ or specified data.
         Iterates through the data points and updates the support vectors.
+        
+        Args:
+            data (Optional[np.ndarray]): Data to process. If None, uses self.data.
         """
-        for new_data in self.data[1:]:
+        # Use provided data or fallback to self.data
+        if data is None:
+            if self.data is None:
+                raise ValueError("No data provided and no stored data available. "
+                               "Pass data argument or initialize with data.")
+            data = self.data
+        
+        for new_data in data[1:]:
             new_data = np.array([new_data])
 
             score, sim_vec = self.score_fcn(new_data)
@@ -59,6 +78,7 @@ class fisvdd:
                 self.model_update()
 
             self.obj_val.append(self.score)
+            self.num_processed += 1
 
     def up_inv(self, prev_inv: np.ndarray, v: np.ndarray) -> np.ndarray:
         """
@@ -205,4 +225,95 @@ class fisvdd:
         else:
             self.score = 1.0 / total_alpha
             self.alpha = self.alpha / total_alpha
+
+    def update_incremental(self, new_batch: np.ndarray, verbose: bool = False) -> dict:
+        """
+        Update the model incrementally with a new batch of data.
+        This is the key method for batch-based incremental learning.
+        
+        Args:
+            new_batch (np.ndarray): New batch of data points to learn from (N, n_features).
+            verbose (bool): If True, print progress information.
+        
+        Returns:
+            dict: Statistics about the update (points_processed, sv_added, sv_removed, final_sv_count).
+        """
+        initial_sv_count = len(self.sv)
+        points_processed = 0
+        sv_added = 0
+        sv_removed = 0
+        
+        for i, new_data in enumerate(new_batch):
+            new_data = np.array([new_data])
+            
+            score, sim_vec = self.score_fcn(new_data)
+            if score > 0:
+                self.expand(new_data, sim_vec)
+                sv_added += 1
+                
+                if min(self.alpha) < 0:
+                    backup = self.shrink()
+                    sv_removed += len(backup)
+                    
+                    # Try to re-add backed up points
+                    for each in backup:
+                        each = np.array([each])
+                        score, sim_vec = self.score_fcn(each)
+                        if score > 0:
+                            self.expand(each, sim_vec)
+                            sv_added += 1
+                
+                self.model_update()
+            
+            self.obj_val.append(self.score)
+            self.num_processed += 1
+            points_processed += 1
+            
+            if verbose and (i + 1) % 50 == 0:
+                print(f"  Processed {i + 1}/{len(new_batch)} points, SVs: {len(self.sv)}")
+        
+        return {
+            "points_processed": points_processed,
+            "sv_added": sv_added,
+            "sv_removed": sv_removed,
+            "initial_sv_count": initial_sv_count,
+            "final_sv_count": len(self.sv),
+            "total_processed": self.num_processed
+        }
+    
+    def get_state(self) -> dict:
+        """
+        Get the current state of the model for checkpointing.
+        
+        Returns:
+            dict: Model state including all necessary parameters.
+        """
+        return {
+            "inv_A": self.inv_A.copy(),
+            "alpha": self.alpha.copy(),
+            "sv": self.sv.copy(),
+            "sigma": self.sigma,
+            "eps_cp": self.eps_cp,
+            "eps_ol": self.eps_ol,
+            "score": self.score,
+            "obj_val": self.obj_val.copy(),
+            "num_processed": self.num_processed
+        }
+    
+    def set_state(self, state: dict):
+        """
+        Restore model state from a checkpoint.
+        
+        Args:
+            state (dict): Model state dictionary from get_state().
+        """
+        self.inv_A = state["inv_A"].copy()
+        self.alpha = state["alpha"].copy()
+        self.sv = state["sv"].copy()
+        self.sigma = state["sigma"]
+        self.eps_cp = state["eps_cp"]
+        self.eps_ol = state["eps_ol"]
+        self.score = state["score"]
+        self.obj_val = state["obj_val"].copy()
+        self.num_processed = state["num_processed"]
 

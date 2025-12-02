@@ -8,11 +8,17 @@
 
 ---
 
-This repository implements an end-to-end **Quality of Experience (QoE)** anomaly detection system for **video streaming** using the **Fast Incremental Support Vector Data Description (FISVDD)** algorithm.  
+This repository implements an end-to-end **Quality of Experience (QoE)** anomaly detection system for **video streaming** using the **Fast Incremental Support Vector Data Description (FISVDD)** algorithm with **batch-based incremental learning**.  
 
 Supports **multiple datasets** with adaptive feature engineering:
 - **LIVE-Netflix-II**: AUC 0.74 | 6 features | VMAF-based quality metrics
 - **LFOVIA QoE**: AUC 0.80 | 4 features | Rebuffering + visual quality
+
+**Key Features**:
+- ⚡ **Incremental Batch Learning** (default): Train progressively with configurable batch sizes
+- 🔄 **Continuous Model Updates**: Add new data without retraining from scratch
+- 💾 **Memory Efficient**: Process data in batches instead of loading everything at once
+- 📊 **Real-time Monitoring**: Track support vector evolution batch-by-batch
 
 Detects playback degradation (rebuffering, bitrate drops, quality instability) and adapts in real time through an incremental API.
 
@@ -53,13 +59,15 @@ FISVDD_QoE_VideoStreaming/
 │   ├── test_fisvdd_unit.py
 │   └── test_api.py
 │
-├── fisvdd.py                          # Core FISVDD algorithm
+├── fisvdd.py                          # Core FISVDD algorithm (with incremental methods)
 ├── common_features.py                 # Generic preprocessing utilities
-├── train_fisvdd.py                    # Multi-dataset training script
+├── train_fisvdd.py                    # Multi-dataset training (incremental by default)
+├── update_model_incremental.py        # Update trained models with new data
 ├── test_fisvdd.py                     # Multi-dataset evaluation
 ├── benchmark_fisvdd.py                # K-fold cross-validation
 ├── compare_datasets.py                # Cross-dataset analysis
 ├── app.py                             # FastAPI incremental serving
+├── INCREMENTAL_LEARNING.md            # Incremental learning quick reference
 └── README.md
 ```
 
@@ -302,12 +310,14 @@ python compare_baselines.py
 
 ## 🔬 Key Highlights
 
-✅ Fully incremental online QoE anomaly detection  
-✅ Real-time adaptation without retraining  
-✅ Robust feature preprocessing for streaming metrics  
-✅ High video-level accuracy on LIVE-Netflix-II  
-✅ FastAPI endpoint for integration with dashboards or monitoring  
-✅ Automated performance visualizations  
+✅ **Incremental Batch Learning (Default)** - Memory-efficient progressive training
+✅ **Continuous Model Updates** - Add new data without retraining from scratch  
+✅ **Multi-Dataset Support** - LIVE-Netflix-II and LFOVIA QoE with adaptive features
+✅ **Real-Time Capable** - 17μs inference, 64K samples/second throughput
+✅ **Robust Feature Engineering** - Dataset-specific preprocessing pipelines  
+✅ **FastAPI Integration** - Production-ready incremental serving endpoint  
+✅ **Comprehensive Testing** - Unit tests, benchmarking, visualization tools
+✅ **Backward Compatible** - Legacy standard mode available via flag  
 📍 Tunisia  
 💼 Focus: QoE Modeling • Incremental Learning • Real-Time AI Systems  
 

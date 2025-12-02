@@ -36,6 +36,12 @@ class BaseDatasetConfig:
     SIGMA_METHOD: str = "median_heuristic"  # or "fixed"
     SIGMA_VALUE: Optional[float] = None
     
+    # Batch learning parameters
+    INITIAL_BATCH_SIZE: int = 100  # Default batch size for initial training
+    INCREMENTAL_BATCH_SIZE: int = 50  # Batch size for incremental updates
+    CHECKPOINT_EVERY_N_BATCHES: int = 10  # Save checkpoint frequency
+    ENABLE_BATCH_CHECKPOINTS: bool = False  # Whether to save intermediate checkpoints
+    
     # Incremental learning parameters
     NORMAL_BUFFER_MAX: int = 500
     REFIT_EVERY: int = 100

@@ -37,8 +37,11 @@ This project supports **2 datasets**. Choose yours and follow the workflow:
 ### Option 1: LIVE-Netflix-II Dataset
 
 ```bash
-# Step 1: Train the model
+# Step 1: Train the model (incremental batch learning by default)
 python train_fisvdd.py --dataset LIVE_NFLX_II
+
+# Optional: Customize batch size
+python train_fisvdd.py --dataset LIVE_NFLX_II --batch-size 200
 
 # Step 2: Test and evaluate
 python test_fisvdd.py --dataset LIVE_NFLX_II
@@ -52,12 +55,14 @@ python benchmark_fisvdd.py --dataset LIVE_NFLX_II
 - AP: ~0.71
 - F1: ~0.42
 
+💡 **New:** Training now uses incremental batch learning by default! See [INCREMENTAL_LEARNING.md](INCREMENTAL_LEARNING.md)
+
 ---
 
 ### Option 2: LFOVIA QoE Dataset
 
 ```bash
-# Step 1: Train the model
+# Step 1: Train the model (incremental batch learning by default)
 python train_fisvdd.py --dataset LFOVIA_QoE
 
 # Step 2: Test and evaluate
@@ -71,6 +76,8 @@ python benchmark_fisvdd.py --dataset LFOVIA_QoE
 - AUC: ~0.80
 - AP: ~0.42
 - F1: ~0.49
+
+**💡 Tip:** Update models with new data using `update_model_incremental.py`
 
 ---
 
