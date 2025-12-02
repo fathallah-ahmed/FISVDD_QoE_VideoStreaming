@@ -264,19 +264,19 @@ python -m pytest tests/ -v
 
 ## 📈 Visualization
 
-After running `benchmark_fisvdd.py`, four plots will be automatically saved in the `docs/` folder:
+After running `benchmark_fisvdd.py`, plots are automatically saved in the `results/{DATASET_NAME}/` folder:
 
 <p align="center">
-  <img src="docs/roc_curve.png" width="48%" alt="ROC curve"/>
-  <img src="docs/pr_curve.png" width="48%" alt="Precision-Recall curve"/>
+  <img src="results/LIVE_NFLX_II/roc_curve.png" width="48%" alt="ROC curve"/>
+  <img src="results/LIVE_NFLX_II/pr_curve.png" width="48%" alt="Precision-Recall curve"/>
 </p>
 
 <p align="center">
-  <img src="docs/per_content_auc.png" width="70%" alt="Per-content AUC"/>
+  <img src="results/LIVE_NFLX_II/per_content_auc.png" width="70%" alt="Per-content AUC"/>
 </p>
 
 <p align="center">
-  <img src="docs/pca_support_vectors.png" width="60%" alt="PCA Support Vectors"/>
+  <img src="results/LIVE_NFLX_II/pca_support_vectors.png" width="60%" alt="PCA Support Vectors"/>
 </p>
 
 These plots visualize:

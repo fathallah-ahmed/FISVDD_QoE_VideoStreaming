@@ -32,11 +32,7 @@ htmlcov/
 !requirements.txt
 !LICENSE.txt
 
-# Dataset files (too large for git)
-resources/**/*.csv
-resources/**/*.mat
-resources/**/*.mp4
-resources/**/*.avi
+
 
 # Keep directory structure
 !resources/**/README.md
