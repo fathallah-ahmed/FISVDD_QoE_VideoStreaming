@@ -27,10 +27,38 @@ Thumbs.db
 .coverage
 htmlcov/
 
-# Temporary files
-*.log
-test_output.txt
-run_tests.py
+# Temporary exploration outputs
+*.txt
+!requirements.txt
+!LICENSE.txt
 
-# Model artifacts (optional - you might want to keep this)
-# fisvdd_artifacts.joblib
+# Dataset files (too large for git)
+resources/**/*.csv
+resources/**/*.mat
+resources/**/*.mp4
+resources/**/*.avi
+
+# Keep directory structure
+!resources/**/README.md
+!resources/**/.gitkeep
+
+# Results (regenerated each run)
+results/**/*.png
+results/**/*.json
+results/**/*.csv
+results/**/*.txt
+
+# Keep results directory structure
+!results/**/README.md
+!results/**/.gitkeep
+
+# Model artifacts (large files, can be regenerated)
+artifacts/**/*.joblib
+artifacts/**/*.pkl
+
+# Keep artifacts directory structure
+!artifacts/**/README.md
+!artifacts/**/.gitkeep
+
+# Brain/artifact directory (conversation artifacts)
+.gemini/

@@ -8,3 +8,4 @@ requests
 matplotlib
 pytest
 httpx
+scipy

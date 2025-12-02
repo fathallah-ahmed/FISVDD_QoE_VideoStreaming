@@ -2,14 +2,19 @@
 
 [![Python](https://img.shields.io/badge/Python-3.13%2B-blue?logo=python&logoColor=white)](https://www.python.org/)
 [![FastAPI](https://img.shields.io/badge/API-FastAPI-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
-[![Dataset](https://img.shields.io/badge/Dataset-LIVE--Netflix%20II-FF6C37?logo=netflix&logoColor=white)](http://live.ece.utexas.edu/research/LIVE_NFLXStudy/nflx_index.html)
-[![License](https://img.shields.io/badge/License-Academic-lightgrey)](#citation)
+[![Datasets](https://img.shields.io/badge/Datasets-2-success)](#datasets)
+[![License](https://img.shields.io/badge/License-MIT-blue)](LICENSE)
 [![Status](https://img.shields.io/badge/Build-Passing-success)](#)
 
 ---
 
-This repository implements an end-to-end **Quality of Experience (QoE)** anomaly detection system for **video streaming**, trained on the **LIVE-Netflix-II dataset** using the **Fast Incremental Support Vector Data Description (FISVDD)** algorithm.  
-It detects playback degradation (rebuffering, bitrate drops, quality instability) and adapts in real time through an incremental API.
+This repository implements an end-to-end **Quality of Experience (QoE)** anomaly detection system for **video streaming** using the **Fast Incremental Support Vector Data Description (FISVDD)** algorithm.  
+
+Supports **multiple datasets** with adaptive feature engineering:
+- **LIVE-Netflix-II**: AUC 0.74 | 6 features | VMAF-based quality metrics
+- **LFOVIA QoE**: AUC 0.80 | 4 features | Rebuffering + visual quality
+
+Detects playback degradation (rebuffering, bitrate drops, quality instability) and adapts in real time through an incremental API.
 
 ---
 
@@ -18,24 +23,43 @@ It detects playback degradation (rebuffering, bitrate drops, quality instability
 ```
 FISVDD_QoE_VideoStreaming/
 │
-├── resources/
-│   ├── LIVE_NFLX_II_windows_minimal.csv      # Extracted 5-second windows
-│   ├── LIVE_NFLX_II_FISVDD_train.csv         # Training subset (QoE > 0)
+├── resources/                          # Dataset files (organized by dataset)
+│   ├── LIVE_NFLX_II/                  
+│   │   ├── LIVE_NFLX_II_FISVDD_train.csv
+│   │   └── LIVE_NFLX_II_windows_minimal.csv
+│   └── LFOVIA_QoE/
+│       ├── LFOVIA_QoE_train.csv
+│       └── LFOVIA_QoE_test.csv
 │
-├── tests/                                    # Unit and integration tests
-│   ├── test_fisvdd_unit.py                   # Core algorithm tests
-│   ├── test_api.py                           # API endpoint tests
+├── configs/                            # Dataset-specific configurations
+│   ├── __init__.py                    # Config registry
+│   ├── base_config.py                 # Base configuration class
+│   ├── live_nflx_ii_config.py        # LIVE-Netflix-II settings
+│   └── lfovia_qoe_config.py          # LFOVIA QoE settings
 │
-├── fisvdd.py                                 # Core FISVDD implementation
-├── common_features.py                        # Preprocessing (log + clip transform)
-├── config.py                                 # Centralized configuration
-├── train_fisvdd.py                           # Offline model training
-├── test_fisvdd.py                            # Evaluation and threshold tuning
-├── app.py                                    # FastAPI incremental serving
-├── client_example.py                         # Example client for the API
-├── benchmark_fisvdd.py                       # K-fold evaluation benchmark + visualization
-├── benchmark_latency.py                      # Real-time latency benchmarking
-├── fisvdd_artifacts.joblib                   # Saved model and parameters
+├── artifacts/                          # Trained models (by dataset)
+│   ├── LIVE_NFLX_II_fisvdd.joblib
+│   └── LFOVIA_QoE_fisvdd.joblib
+│
+├── results/                            # Evaluation results
+│   ├── LIVE_NFLX_II/                  # ROC curves, metrics, plots
+│   ├── LFOVIA_QoE/
+│   └── comparative_analysis/          # Cross-dataset comparisons
+│
+├── scripts/                            # Utility scripts
+│   └── exploration/                   # Dataset exploration tools
+│
+├── tests/                              # Unit and integration tests
+│   ├── test_fisvdd_unit.py
+│   └── test_api.py
+│
+├── fisvdd.py                          # Core FISVDD algorithm
+├── common_features.py                 # Generic preprocessing utilities
+├── train_fisvdd.py                    # Multi-dataset training script
+├── test_fisvdd.py                     # Multi-dataset evaluation
+├── benchmark_fisvdd.py                # K-fold cross-validation
+├── compare_datasets.py                # Cross-dataset analysis
+├── app.py                             # FastAPI incremental serving
 └── README.md
 ```
 
@@ -61,28 +85,50 @@ pip install -r requirements.txt
 
 ---
 
-## 🎞 Dataset
+## 🎞 Datasets
 
-📘 **LIVE-Netflix-II (2018)**  
-http://live.ece.utexas.edu/research/LIVE_NFLXStudy/nflx_index.html  
+This project supports multiple video QoE datasets with dataset-specific feature engineering.
 
-The dataset contains **420 distorted video sequences** with subjective QoE scores.  
-We extract **5-second windows** with the following features:
+### 📘 LIVE-Netflix-II (2018)
+
+**Source**: [LIVE-NFLX Video QoE Database](http://live.ece.utexas.edu/research/LIVE_NFLXStudy/nflx_index.html)  
+**Content**: 420 distorted video sequences with subjective QoE scores  
+**Features**: 6 VMAF-based quality metrics  
+**Performance**: AUC 0.74 | AP 0.71 | F1 0.42
 
 | Feature | Description |
-|----------|-------------|
+|---------|-------------|
 | `vmaf_mean`, `vmaf_std`, `vmaf_mad` | Quality variation from Netflix VMAF |
 | `bitrate_mean` | Average bitrate (kbps) |
 | `stall_ratio` | Ratio of stalled frames |
 | `tsl_end` | Time since last stall |
-| `QoE_win` | Z-scored subjective QoE (for validation only) |
+
+### 📗 LFOVIA QoE Dataset
+
+**Source**: [IIT Hyderabad LFOVIA](https://iith.ac.in/~lfovia/)  
+**Content**: 54 videos (18 pristine + 36 distorted) with continuous QoE scores  
+**Features**: 4 streaming + visual quality metrics  
+**Performance**: AUC 0.80 | AP 0.42 | F1 0.49
+
+| Feature | Description |
+|---------|-------------|
+| `TSL` | Time since last rebuffer event |
+| `Nrebuffers` | Number of rebuffering events |
+| `NIQE` | No-reference image quality (naturalness) |
+| `SSIM` | Structural similarity index |
 
 ---
 
 ## 🧮 Training the Model
 
+Train on any supported dataset:
+
 ```bash
-python train_fisvdd.py
+# LIVE-Netflix-II
+python train_fisvdd.py --dataset LIVE_NFLX_II
+
+# LFOVIA QoE
+python train_fisvdd.py --dataset LFOVIA_QoE
 ```
 
 This script:
@@ -97,8 +143,11 @@ This script:
 
 ## 🧪 Evaluation
 
+Evaluate on any dataset:
+
 ```bash
-python test_fisvdd.py
+python test_fisvdd.py --dataset LIVE_NFLX_II
+python test_fisvdd.py --dataset LFOVIA_QoE
 ```
 
 Example output:
@@ -154,8 +203,14 @@ Every `REFIT_EVERY` updates, it refits automatically and persists its state.
 
 ## 📊 Benchmarking
 
+Run K-fold cross-validation:
+
 ```bash
-python benchmark_fisvdd.py
+python benchmark_fisvdd.py --dataset LIVE_NFLX_II
+python benchmark_fisvdd.py --dataset LFOVIA_QoE
+
+# Compare datasets
+python compare_datasets.py
 ```
 
 Example results:
@@ -253,24 +308,6 @@ python compare_baselines.py
 ✅ High video-level accuracy on LIVE-Netflix-II  
 ✅ FastAPI endpoint for integration with dashboards or monitoring  
 ✅ Automated performance visualizations  
-
----
-
-## 🏫 Citation
-
-If you use this framework or dataset:
-
-> C. G. Bampis, Z. Li, I. Katsavounidis, T.-Y. Huang, C. Ekanadham, and A. C. Bovik,  
-> *“Towards Perceptually Optimized End-to-End Adaptive Video Streaming,”*  
-> IEEE Transactions on Image Processing, 2018.  
-> [LIVE-Netflix Video QoE Database](http://live.ece.utexas.edu/research/LIVE_NFLXStudy)
-
----
-
-## 👨‍💻 Author
-
-**Ahmed Fathallah**  
-Software & Machine Learning Engineer  
 📍 Tunisia  
 💼 Focus: QoE Modeling • Incremental Learning • Real-Time AI Systems  
 
