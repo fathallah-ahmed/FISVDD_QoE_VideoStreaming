@@ -85,7 +85,7 @@ def train_model(dataset_name: str, batch_size: int = None, use_batches: bool = F
     else:
         raise ValueError(f"Unknown sigma method: {config.SIGMA_METHOD}")
     
-    print(f"      σ = {sigma:.6f}")
+    print(f"      sigma = {sigma:.6f}")
     
     # Train FISVDD
     print(f"[5/6] Training FISVDD model...")
@@ -100,7 +100,7 @@ def train_model(dataset_name: str, batch_size: int = None, use_batches: bool = F
         print(f"      [Batch 1/{num_batches}] Initializing with {len(first_batch)} samples...")
         model = fisvdd(first_batch, sigma, initial_batch_only=True)
         model.find_sv(first_batch)
-        print(f"         → SVs: {len(model.sv)}")
+        print(f"         -> SVs: {len(model.sv)}")
         
         # Process remaining batches
         for i in range(1, num_batches):
@@ -110,7 +110,7 @@ def train_model(dataset_name: str, batch_size: int = None, use_batches: bool = F
             
             print(f"      [Batch {i+1}/{num_batches}] Processing {len(batch)} samples...")
             stats = model.update_incremental(batch, verbose=False)
-            print(f"         → SVs: {stats['final_sv_count']} "
+            print(f"         -> SVs: {stats['final_sv_count']} "
                   f"(+{stats['sv_added']} added, -{stats['sv_removed']} removed)")
             
             # Checkpoint if enabled
@@ -118,7 +118,7 @@ def train_model(dataset_name: str, batch_size: int = None, use_batches: bool = F
                 checkpoint_path = config.get_artifact_path(
                     f"{config.DATASET_NAME}_checkpoint_batch_{i+1}.joblib"
                 )
-                print(f"         → Saving checkpoint: {checkpoint_path}")
+                print(f"         -> Saving checkpoint: {checkpoint_path}")
                 joblib.dump(model.get_state(), checkpoint_path)
         
         print(f"      Total samples processed: {model.num_processed}")
@@ -140,7 +140,7 @@ def train_model(dataset_name: str, batch_size: int = None, use_batches: bool = F
     
     train_scores = score_batch(model, X)
     threshold = float(np.quantile(train_scores, config.THRESHOLD_QUANTILE))
-    print(f"      τ = {threshold:.6f}")
+    print(f"      tau = {threshold:.6f}")
     
     # Save artifacts
     artifact_path = config.get_artifact_path(config.get_model_artifact_name())
@@ -165,14 +165,14 @@ def train_model(dataset_name: str, batch_size: int = None, use_batches: bool = F
     }, artifact_path)
     
     print(f"\n{'='*60}")
-    print(f"✅ Training complete!")
+    print(f"[SUCCESS] Training complete!")
     print(f"{'='*60}")
     print(f"Model saved to: {artifact_path}")
     print(f"Samples: {len(X)}")
     print(f"Features: {len(config.FEATURE_COLUMNS)}")
     print(f"Support Vectors: {len(model.sv)}")
-    print(f"Sigma (σ): {sigma:.6f}")
-    print(f"Threshold (τ): {threshold:.6f}")
+    print(f"Sigma: {sigma:.6f}")
+    print(f"Threshold: {threshold:.6f}")
     if use_batches:
         print(f"Training Mode: Batch Incremental (batch_size={batch_size})")
     print(f"{'='*60}\n")

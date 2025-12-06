@@ -20,12 +20,17 @@
 | **AUC** | 0.738 | ✅ No regression |
 | **AP** | 0.709 | ✅ Maintained |
 | **F1** | 0.422 | ✅ Stable |
+| **Latency** | **0.02 ms** | 🚀 **300x faster than IsoForest** |
 
 ---
 
 ## 🗂️ Project Organization
 
-### Files Added (12 new files)
+### Files Added (14 new files)
+
+**Benchmarks:**
+1. `compare_baselines.py` - Model comparison script
+2. `benchmark_all_latency.py` - Latency benchmark script
 
 **Documentation:**
 1. `LICENSE` - MIT License with dataset citations

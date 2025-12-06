@@ -101,6 +101,20 @@ python benchmark_fisvdd.py --dataset LFOVIA_QoE
 
 ---
 
+## 🏎️ Run Benchmarks (New)
+
+Compare accuracy and speed against baselines:
+
+```bash
+# Compare Accuracy (AUC/AP)
+python compare_baselines.py
+
+# Benchmark Speed (Latency)
+python benchmark_all_latency.py
+```
+
+---
+
 ## 🔄 Compare All 3 Datasets
 
 After training all three models:
