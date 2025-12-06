@@ -170,11 +170,13 @@ def main():
         
         ax = pivot_df.plot(kind="bar",  width=0.8, color=colors, figsize=(12, 6))
         
-        plt.title("Inference Latency Comparison across Datasets (Lower is Better)", fontsize=16)
+        # Increase top margin to make room for labels above high bars
+        ax.margins(y=0.2)
+        
+        plt.title("Inference Latency Comparison across Datasets (Lower is Better)", fontsize=16, pad=35)
         plt.xlabel("Dataset", fontsize=14)
         plt.ylabel("Mean Latency (ms) - Log Scale", fontsize=14)
         plt.yscale('log') # Log scale because IsoForest is much slower
-        plt.grid(axis='y', linestyle='--', alpha=0.5, which='both')
         
         plt.legend(title="Model", bbox_to_anchor=(1.05, 1), loc='upper left')
         
